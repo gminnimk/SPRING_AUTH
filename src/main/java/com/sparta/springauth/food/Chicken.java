@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 @Component
 
 // 범용적으로 사용되는 Bean 객체에는 Primary를!
-@Primary
+@Primary // 같은 타입의 Bean이 여러개 있을 때 범용적으로 사용되는 Bean 객체에 사용 , 큰 범위
 public class Chicken implements Food {
     @Override
     public void eat() {

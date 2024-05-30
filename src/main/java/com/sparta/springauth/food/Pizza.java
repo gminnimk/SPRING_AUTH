@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 // 큰 범위(Primary)가 우선순위가 더 낮고 좁은 범위(Qualfier)가 더 높음
 
 
-// 지엽적으로 사용되는 Bean 객체에는 Qualfier를!
+// 지엽적으로 사용되는 Bean 객체에는 Qualfier를!  좁은 범위
 @Qualifier("pizza")
 public class Pizza implements Food {
     @Override
