@@ -23,7 +23,7 @@ import java.io.IOException;
 
 
 @Slf4j(topic = "AuthFilter") // 로깅을 위한 설정으로, AuthFilter라는 이름의 로거를 생성합니다.
-@Component // Spring에서 이 클래스를 빈으로 등록합니다.
+//@Component // Spring에서 이 클래스를 빈으로 등록합니다.
 @Order(2) // 이 필터의 실행 순서를 지정합니다. 숫자가 낮을수록 먼저 실행됩니다.
 public class AuthFilter implements Filter { // 이 클래스가 Filter 인터페이스를 구현한다고 선언합니다.
 
