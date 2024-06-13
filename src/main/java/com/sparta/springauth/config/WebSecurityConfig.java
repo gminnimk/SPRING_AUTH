@@ -1,58 +1,106 @@
 package com.sparta.springauth.config;
 
+import com.sparta.springauth.jwt.JwtAuthorizationFilter;
+import com.sparta.springauth.jwt.JwtAuthenticationFilter;
+import com.sparta.springauth.jwt.JwtUtil;
+import com.sparta.springauth.security.UserDetailsServiceImpl;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+
 
 /*
-Spring Boot 애플리케이션에서 Spring Security를 설정하는 구성 클래스입니다.
-이 클래스는 HTTP 요청에 대한 보안 설정을 정의하며, 특정 경로에 대한 접근을 허용하거나 인증을 요구하고, 사용자 인증을 처리하는 방식을 지정합니다.
+ Spring Security를 설정하여 JWT 기반의 인증 및 인가를 처리하는 방법을 보여줍니다.
+ 필요한 빈들을 등록하고, HTTP 요청에 대한 인가 설정을 하며, 필터를 추가하여 JWT 인증 처리 및 인가를 관리합니다.
+ 이를 통해 보안적으로 더 안전한 웹 애플리케이션을 구성할 수 있습니다.
  */
+@Configuration // 이 클래스가 Spring의 Java 설정 클래스임을 나타냅니다.
+@EnableWebSecurity // Spring Security 지원을 가능하게 함 , Spring Security를 사용할 수 있도록 활성화합니다.
+public class WebSecurityConfig { // Spring Security 설정을 담당하는 클래스입니다. 생성자에서 필요한 빈들을 주입받습니다.
 
+    private final JwtUtil jwtUtil;
+    private final UserDetailsServiceImpl userDetailsService;
+    private final AuthenticationConfiguration authenticationConfiguration;
 
-@Configuration // 이 클래스가 Spring 설정 클래스임을 나타냅니다.
-@EnableWebSecurity // Spring Security 지원을 가능하게 함 ,  Spring Security를 활성화하여 보안 기능을 사용할 수 있도록 합니다.
+    public WebSecurityConfig(JwtUtil jwtUtil, UserDetailsServiceImpl userDetailsService, AuthenticationConfiguration authenticationConfiguration) {
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
+        this.authenticationConfiguration = authenticationConfiguration;
+    }
 
-public class WebSecurityConfig {
+    @Bean
 
-    @Bean // 이 메서드가 Spring 컨텍스트에서 관리하는 빈을 생성함을 나타냅니다.
+    // AuthenticationManager를 빈으로 등록합니다. 이는 Spring Security 인증을 관리하는 데 필요합니다.
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+
+    // JwtAuthenticationFilter를 빈으로 등록합니다. 이 필터는 사용자의 로그인을 처리하고 JWT를 생성합니다.
+    public JwtAuthenticationFilter jwtAuthenticationFilter() throws Exception {
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtUtil);
+        filter.setAuthenticationManager(authenticationManager(authenticationConfiguration));
+        return filter;
+    }
+
+    @Bean
+
+    // JwtAuthorizationFilter를 빈으로 등록합니다. 이 필터는 JWT를 검증하고 사용자를 인증합니다.
+    public JwtAuthorizationFilter jwtAuthorizationFilter() {
+        return new JwtAuthorizationFilter(jwtUtil, userDetailsService);
+    }
+
+    @Bean
+
+    // securityFilterChain을 빈으로 등록하여 Spring Security의 설정을 구성합니다.
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        //보안 필터 체인을 정의하는 메서드입니다. HttpSecurity를 인자로 받아 보안 설정을 구성합니다.
-
         // CSRF 설정
+        // http.csrf((csrf) -> csrf.disable()): CSRF 보호 기능을 비활성화합니다.
         http.csrf((csrf) -> csrf.disable());
-        /*
-        CSRF(Cross-Site Request Forgery) 보호 기능을 비활성화합니다.
-        일반적으로 API 서버에서는 CSRF 보호가 필요하지 않기 때문에 이를 비활성화할 수 있습니다.
-         */
 
-        http.authorizeHttpRequests((authorizeHttpRequests) -> // authorizeHttpRequests: HTTP 요청에 대한 인가 설정을 구성합니다.
+        // 기본 설정인 Session 방식은 사용하지 않고 JWT 방식을 사용하기 위한 설정
+        // http.sessionManagement((sessionManagement) ->
+        // sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)): 세션 관리 방식을 STATELESS로 설정하여 세션을 사용하지 않도록 합니다.
+        http.sessionManagement((sessionManagement) ->
+                sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        );
+
+
+        // http.authorizeHttpRequests((authorizeHttpRequests) -> { ... }): 요청에 대한 인가 설정을 구성합니다. 정적 리소스는 인증 없이 접근할 수 있도록 하고,
+        // '/api/user/'로 시작하는 요청도 인증 없이 접근할 수 있도록 합니다.
+        http.authorizeHttpRequests((authorizeHttpRequests) ->
                 authorizeHttpRequests
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll() // resources 접근 허용 설정
-                        // 정적 리소스(예: CSS, JavaScript, 이미지)에 대한 요청은 인증 없이 접근을 허용합니다.
                         .requestMatchers("/api/user/**").permitAll() // '/api/user/'로 시작하는 요청 모두 접근 허가
-                        // 인증 없이 접근을 허용!
-
                         .anyRequest().authenticated() // 그 외 모든 요청 인증처리
         );
 
-        // 로그인 사용
-        http.formLogin((formLogin) -> // 폼 로그인을 설정합니다.
+
+
+        // http.formLogin((formLogin) -> formLogin.loginPage("/api/user/login-page").permitAll()): 로그인 페이지를 설정하고,
+        // 해당 페이지는 모든 사용자에게 접근 가능하도록 허용합니다.
+        http.formLogin((formLogin) ->
                 formLogin
-                        // 로그인 View 제공 (GET /api/user/login-page)
-                        .loginPage("/api/user/login-page") // 사용자 로그인 페이지를 제공하는 URL을 설정합니다. (GET 요청)
-                        // 로그인 처리 (POST /api/user/login)
-                        .loginProcessingUrl("/api/user/login") //  로그인 처리 요청을 처리할 URL을 설정합니다. (POST 요청)
-                        // 로그인 처리 후 성공 시 URL
-                        .defaultSuccessUrl("/") // 로그인 성공 시 이동할 기본 URL을 설정합니다.
-                        // 로그인 처리 후 실패 시 URL
-                        .failureUrl("/api/user/login-page?error") // 로그인 실패 시 이동할 URL을 설정합니다.
-                        .permitAll() // 로그인 관련 요청은 인증 없이 접근을 허용합니다.
+                        .loginPage("/api/user/login-page").permitAll()
         );
 
-        return http.build(); //  구성된 보안 필터 체인을 반환합니다. 이 필터 체인이 애플리케이션의 보안 설정을 담당합니다.
+
+
+        // 필터 관리
+
+        http.addFilterBefore(jwtAuthorizationFilter(), JwtAuthenticationFilter.class); // JwtAuthorizationFilter를 JwtAuthenticationFilter 앞에 등록하여 JWT 검증 및 사용자 인증을 처리합니다.
+        http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class); // JwtAuthenticationFilter를 UsernamePasswordAuthenticationFilter 앞에 등록하여 사용자의 로그인 요청을 처리하고 JWT를 생성합니다.
+
+        return http.build();
     }
 }
