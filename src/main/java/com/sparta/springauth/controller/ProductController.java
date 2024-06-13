@@ -1,7 +1,12 @@
 package com.sparta.springauth.controller;
 
 import com.sparta.springauth.entity.User;
+import com.sparta.springauth.entity.UserRoleEnum;
+import com.sparta.springauth.security.UserDetailsImpl;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +25,7 @@ JWT 인증 필터가 제대로 설정되어 있을 때, user 객체가 요청 �
 
 @Controller // 이 클래스가 Spring MVC의 컨트롤러임을 나타냅니다.
 @RequestMapping("/api") // 이 클래스의 모든 요청 경로 앞에 /api가 추가됩니다. 즉, 이 컨트롤러의 모든 메서드는 /api로 시작하는 URL을 처리합니다.
+
 public class ProductController {
 
     @GetMapping("/products") // 이 메서드는 HTTP GET 요청을 처리하며, /api/products 경로에 매핑됩니다.
@@ -30,4 +36,18 @@ public class ProductController {
 
         return "redirect:/"; // 요청을 처리한 후 / 경로로 사용자를 이동시킵니다.
     }
+
+
+    @Secured(UserRoleEnum.Authority.ADMIN) // 관리자용
+    @GetMapping("/products/secured")
+    public String getProductsByAdmin(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        System.out.println("userDetails.getUsername() = " + userDetails.getUsername());
+        for (GrantedAuthority authority : userDetails.getAuthorities()) {
+            System.out.println("authority.getAuthority() = " + authority.getAuthority());
+        }
+
+        return "redirect:/";
+    }
 }
+
+

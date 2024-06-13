@@ -17,7 +17,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 
-
 /*
  Spring Security를 설정하여 JWT 기반의 인증 및 인가를 처리하는 방법을 보여줍니다.
  필요한 빈들을 등록하고, HTTP 요청에 대한 인가 설정을 하며, 필터를 추가하여 JWT 인증 처리 및 인가를 관리합니다.
@@ -25,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration // 이 클래스가 Spring의 Java 설정 클래스임을 나타냅니다.
 @EnableWebSecurity // Spring Security 지원을 가능하게 함 , Spring Security를 사용할 수 있도록 활성화합니다.
+@EnableGlobalMethodSecurity(securedEnabled = true)
 public class WebSecurityConfig { // Spring Security 설정을 담당하는 클래스입니다. 생성자에서 필요한 빈들을 주입받습니다.
 
     private final JwtUtil jwtUtil;
@@ -86,7 +86,6 @@ public class WebSecurityConfig { // Spring Security 설정을 담당하는 클�
         );
 
 
-
         // http.formLogin((formLogin) -> formLogin.loginPage("/api/user/login-page").permitAll()): 로그인 페이지를 설정하고,
         // 해당 페이지는 모든 사용자에게 접근 가능하도록 허용합니다.
         http.formLogin((formLogin) ->
@@ -95,12 +94,25 @@ public class WebSecurityConfig { // Spring Security 설정을 담당하는 클�
         );
 
 
-
         // 필터 관리
+        http.addFilterBefore(jwtAuthorizationFilter(), JwtAuthenticationFilter.class);
+        http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
-        http.addFilterBefore(jwtAuthorizationFilter(), JwtAuthenticationFilter.class); // JwtAuthorizationFilter를 JwtAuthenticationFilter 앞에 등록하여 JWT 검증 및 사용자 인증을 처리합니다.
-        http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class); // JwtAuthenticationFilter를 UsernamePasswordAuthenticationFilter 앞에 등록하여 사용자의 로그인 요청을 처리하고 JWT를 생성합니다.
+        // 접근 불가 페이지
+
+        // exceptionHandling 메서드는 예외 처리를 구성하는 메서드입니다
+        http.exceptionHandling((exceptionHandling) ->
+                exceptionHandling
+                        // "접근 불가" 페이지 URL 설정
+                        .accessDeniedPage("/forbidden.html")
+                        // .accessDeniedPage("/forbidden.html")는 접근이 거부된 경우 사용자를 리다이렉트할 페이지를 설정합니다.
+                        // 예를 들어, 사용자가 인가되지 않은 리소스에 접근하려고 시도했을 때 "/forbidden.html"로 리다이렉트됩니다.
+        );
 
         return http.build();
+        // http.build()는 설정된 HttpSecurity 객체를 반환합니다.
+        // 이 객체는 Spring Security의 구성을 포함하고 있으며, 이 설정은 애플리케이션이 실행될 때 적용됩니다.
     }
 }
+
+
