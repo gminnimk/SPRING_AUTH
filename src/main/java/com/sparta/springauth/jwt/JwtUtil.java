@@ -5,6 +5,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.security.Key;
 import java.util.Base64;
@@ -114,6 +116,34 @@ public class JwtUtil {
     /* JWT 토큰에서 사용자 정보 가져오기 */
     public Claims getUserInfoFromToken(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+    }
+
+
+    // HttpServletRequest 에서 Cookie Value : JWT 가져오기
+
+    /*
+    이 메서드는 HTTP 요청에서 쿠키 배열을 가져와, AUTHORIZATION_HEADER 이름을 가진 쿠키를 찾고, 해당 쿠키의 값을 URL 디코딩하여 반환합니다.
+    쿠키가 없거나 JWT 쿠키를 찾지 못하면 null을 반환합니다. 이를 통해 JWT 토큰을 요청의 쿠키에서 추출할 수 있습니다.
+     */
+    public String getTokenFromRequest(HttpServletRequest req) {
+        //  HttpServletRequest 객체를 인자로 받아, 요청에 포함된 쿠키에서 JWT 토큰을 추출하여 반환합니다. 반환 타입은 String
+        Cookie[] cookies = req.getCookies(); // 요청에서 모든 쿠키를 배열 형태로 가져옵니다. 쿠키가 없으면 null을 반환합니다.
+        if(cookies != null) { // 쿠키 배열이 null이 아닌지 확인합니다. 쿠키가 존재할 경우에만 다음 작업을 진행합니다.
+            for (Cookie cookie : cookies) { // 각 쿠키를 순회하며, 쿠키의 이름이 AUTHORIZATION_HEADER와 같은지 확인합니다
+                if (cookie.getName().equals(AUTHORIZATION_HEADER)) { // AUTHORIZATION_HEADER는 JWT 토큰이 저장된 쿠키의 이름을 나타냅니다
+
+                    // 쿠키 값은 URL 인코딩되어 있을 수 있으므로, URLDecoder.decode 메서드를 사용해 디코딩
+                    // 디코딩 과정에서 UnsupportedEncodingException이 발생할 수 있으며, 이 경우 null을 반환합니다.
+                    try {
+                        // Encode 되어 넘어간 Value 다시 Decode ,해당 쿠키를 찾으면 cookie.getValue()로 쿠키 값을 가져옵니다.
+                        return URLDecoder.decode(cookie.getValue(), "UTF-8");
+                    } catch (UnsupportedEncodingException e) {
+                        return null;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
 
